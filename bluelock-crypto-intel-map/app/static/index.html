@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlueLock · Crypto Intel Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<!-- ══ TOP HEADER BAR ════════════════════════════════════════ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">BLUELOCK</span>
+      <span class="logo-sub">CRYPTO INTEL</span>
+    </div>
+    <div class="topbar-divider"></div>
+    <span class="topbar-badge">PUBLIC CHAIN FORENSICS</span>
+    <span class="topbar-badge muted">READ-ONLY</span>
+  </div>
+  <div class="topbar-right">
+    <span id="status-dot" class="status-dot inactive"></span>
+    <span id="status-text" class="status-text">NOT CONNECTED</span>
+    <button class="btn-icon" id="settings-toggle" title="API Key Settings">⚙</button>
+  </div>
+</header>
+
+<!-- ══ MAIN LAYOUT ══════════════════════════════════════════ -->
+<div class="layout">
+
+  <!-- ── LEFT PANEL: SEARCH + CASES ──────────────────────── -->
+  <aside class="sidebar">
+
+    <!-- Search Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">WALLET ANALYSIS</span>
+      </div>
+      <div class="panel-body">
+        <label class="field-label">TARGET ADDRESS</label>
+        <input
+          type="text"
+          id="wallet-input"
+          class="field-input mono"
+          placeholder="0x..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+
+        <label class="field-label mt">CHAIN</label>
+        <select id="chain-select" class="field-select">
+          <option value="ethereum">Ethereum</option>
+          <option value="base">Base</option>
+          <option value="bsc">BNB Chain</option>
+          <option value="polygon">Polygon</option>
+          <option value="arbitrum">Arbitrum</option>
+        </select>
+
+        <button id="analyze-btn" class="btn-primary mt">
+          <span id="btn-text">▶ ANALYZE WALLET</span>
+          <span id="btn-spinner" class="spinner hidden"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Saved Cases -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">SAVED CASES</span>
+        <button class="btn-tiny" id="refresh-cases">↻</button>
+      </div>
+      <div class="panel-body" id="cases-list">
+        <div class="empty-state">No saved cases yet.</div>
+      </div>
+    </div>
+
+    <!-- API Status -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">API STATUS</span>
+      </div>
+      <div class="panel-body" id="api-status-list">
+        <div class="empty-state">Loading...</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── MAIN CONTENT AREA ──────────────────────────────── -->
+  <main class="content">
+
+    <!-- Welcome / empty state -->
+    <div id="welcome-panel" class="welcome">
+      <div class="welcome-inner">
+        <div class="welcome-icon">◈</div>
+        <h2 class="welcome-title">BlueLock Crypto Intel</h2>
+        <p class="welcome-desc">
+          Enter a wallet address and select a chain to begin analysis.<br>
+          All data is sourced from public blockchain explorers.
+        </p>
+        <div class="welcome-tags">
+          <span class="tag">Public-Chain Only</span>
+          <span class="tag">Read-Only</span>
+          <span class="tag">Local Storage</span>
+          <span class="tag">No Telemetry</span>
+        </div>
+        <div class="welcome-disclaimer">
+          This tool analyzes public blockchain data only. Findings are observational
+          and require manual verification. No findings constitute legal conclusions.
+        </div>
+      </div>
+    </div>
+
+    <!-- Error banner -->
+    <div id="error-banner" class="alert alert-error hidden"></div>
+    <div id="warning-banner" class="alert alert-warning hidden"></div>
+
+    <!-- ── RESULTS PANELS (hidden until analysis) ──────── -->
+    <div id="results-area" class="hidden">
+
+      <!-- Wallet Summary Card -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">WALLET SUMMARY</span>
+          <div class="panel-actions">
+            <span id="chain-badge" class="chain-badge">ETH</span>
+            <a id="explorer-link" class="btn-tiny" href="#" target="_blank" rel="noopener">
+              VIEW ON EXPLORER ↗
+            </a>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="summary-grid" id="summary-grid">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Notes -->
+      <div class="panel" id="risk-panel">
+        <div class="panel-header">
+          <span class="panel-title">ANALYST OBSERVATIONS</span>
+          <span class="panel-hint">Requires manual verification</span>
+        </div>
+        <div class="panel-body" id="risk-notes-body">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- 2-column: Graph + Case Notes -->
+      <div class="two-col">
+
+        <!-- Counterparty Graph -->
+        <div class="panel graph-panel">
+          <div class="panel-header">
+            <span class="panel-title">COUNTERPARTY MAP</span>
+            <div class="graph-legend">
+              <span class="legend-item target">● Target</span>
+              <span class="legend-item exchange">● Exchange</span>
+              <span class="legend-item dex">● DEX</span>
+              <span class="legend-item bridge">● Bridge</span>
+              <span class="legend-item counterparty">● Wallet</span>
+              <span class="legend-item contract">● Contract</span>
+            </div>
+          </div>
+          <div id="cy" class="graph-container"></div>
+        </div>
+
+        <!-- Case Notes -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">CASE NOTES</span>
+          </div>
+          <div class="panel-body">
+            <label class="field-label">ANALYST LABEL</label>
+            <input type="text" id="case-label" class="field-input" placeholder="e.g. Suspected mixer, Exchange hot wallet..." />
+
+            <label class="field-label mt">TAGS (comma-separated)</label>
+            <input type="text" id="case-tags" class="field-input" placeholder="e.g. review, high-priority, exchange" />
+
+            <label class="field-label mt">INVESTIGATION NOTES</label>
+            <textarea id="case-notes" class="field-textarea" rows="5"
+              placeholder="Enter analyst observations, links, context..."></textarea>
+
+            <div class="btn-row mt">
+              <button class="btn-secondary" id="save-case-btn">💾 SAVE CASE</button>
+              <button class="btn-secondary" id="export-btn">↓ EXPORT JSON</button>
+            </div>
+            <div id="save-status" class="save-status hidden"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transaction Timeline -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">TRANSACTION TIMELINE</span>
+          <div class="tx-filters">
+            <button class="filter-btn active" data-filter="all">ALL</button>
+            <button class="filter-btn" data-filter="in">IN</button>
+            <button class="filter-btn" data-filter="out">OUT</button>
+            <button class="filter-btn" data-filter="dex">DEX</button>
+            <button class="filter-btn" data-filter="flagged">⚑ FLAGGED</button>
+          </div>
+        </div>
+        <div class="panel-body no-pad">
+          <table class="tx-table" id="tx-table">
+            <thead>
+              <tr>
+                <th>TIME</th>
+                <th>TYPE</th>
+                <th>DIR</th>
+                <th>COUNTERPARTY</th>
+                <th>VALUE</th>
+                <th>TOKEN</th>
+                <th>HASH</th>
+              </tr>
+            </thead>
+            <tbody id="tx-body">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+          <div id="tx-empty" class="empty-state-table hidden">No transactions match the selected filter.</div>
+        </div>
+      </div>
+
+    </div>
+    <!-- /results-area -->
+
+  </main>
+</div>
+
+<!-- ══ SETTINGS MODAL ════════════════════════════════════════ -->
+<div id="settings-modal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">⚙ API KEY CONFIGURATION</span>
+      <button class="modal-close" id="settings-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">
+        API keys are stored in the <code>.env</code> file in your project folder.
+        Edit that file with a text editor and restart the server to apply changes.<br>
+        Free keys available from each chain's explorer.
+      </p>
+      <div id="api-keys-detail"><!-- Populated by JS --></div>
+      <div class="modal-footer">
+        <p class="disclaimer-text">
+          This dashboard only reads public blockchain data. 
+          It never stores private keys, seed phrases, or submits transactions.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/dashboard.js"></script>
+</body>
+</html>

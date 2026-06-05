@@ -1,0 +1,5 @@
+{
+  "_comment": "Add custom address labels here. Format: '0xlowercase': ['Label Name', 'category']",
+  "_categories": "exchange | dex | bridge | stablecoin | defi | contract | custom",
+  "_example": "0xabc123...def456: ['My Custom Label', 'custom']"
+}

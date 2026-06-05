@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Environment & secrets — NEVER commit
+.env
+
+# Database & local data
+data/cases.db
+data/*.db
+
+# Reports (user-generated output)
+reports/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
